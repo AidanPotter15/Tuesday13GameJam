@@ -7,6 +7,8 @@ using UnityEngine.Rendering;
 namespace XIII.EditorTools
 {
     // Menu: XIII > 1. Setup Project, then XIII > 2. Build WebGL.
+    // Missing materials are also created automatically whenever scripts reload.
+    [InitializeOnLoad]
     public static class XIIISetup
     {
         const string Root = "Assets/XIII";
@@ -14,11 +16,19 @@ namespace XIII.EditorTools
         const string ScenePath = Root + "/XIII.unity";
         const string BuildDir = "Builds/WebGL";
 
+        static XIIISetup()
+        {
+            EditorApplication.delayCall += () =>
+            {
+                if (!EditorApplication.isPlayingOrWillChangePlaymode) CreateMaterials(false);
+            };
+        }
+
         [MenuItem("XIII/1. Setup Project", priority = 1)]
         public static void Setup()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
-            CreateMaterials();
+            CreateMaterials(true);
             CreateScene();
             ConfigurePlayer();
             AssetDatabase.SaveAssets();
@@ -56,7 +66,7 @@ namespace XIII.EditorTools
             else if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) EditorSceneManager.OpenScene(ScenePath);
         }
 
-        static void CreateMaterials()
+        static void CreateMaterials(bool overwrite)
         {
             if (!AssetDatabase.IsValidFolder(ResourcesDir)) AssetDatabase.CreateFolder(Root, "Resources");
             bool urp = GraphicsSettings.currentRenderPipeline != null;
@@ -64,21 +74,25 @@ namespace XIII.EditorTools
             Shader lit = Shader.Find(urp ? "Universal Render Pipeline/Lit" : "Standard");
             Shader unlit = Shader.Find(urp ? "Universal Render Pipeline/Unlit" : "Unlit/Color");
             Shader text = Shader.Find("XIII/Text");
+            Shader glow = Shader.Find("XIII/Glow");
             if (lit == null || unlit == null) Debug.LogError("[XIII] Could not find the " + (urp ? "URP" : "Built-in") + " shaders.");
 
-            WriteMaterial("XIII_Lit", lit);
-            WriteMaterial("XIII_Unlit", unlit);
-            if (text != null) WriteMaterial("XIII_Text", text);
+            WriteMaterial("XIII_Lit", lit, overwrite);
+            WriteMaterial("XIII_Unlit", unlit, overwrite);
+            if (text != null) WriteMaterial("XIII_Text", text, overwrite);
             else Debug.LogWarning("[XIII] XIII/Text shader not found; signs will use the default font shader.");
+            if (glow != null) WriteMaterial("XIII_Glow", glow, overwrite);
+            else Debug.LogWarning("[XIII] XIII/Glow shader not found; light halos and dust will be missing.");
         }
 
-        static void WriteMaterial(string name, Shader shader)
+        static void WriteMaterial(string name, Shader shader, bool overwrite)
         {
             if (shader == null) return;
             string path = ResourcesDir + "/" + name + ".mat";
             var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (existing != null)
             {
+                if (!overwrite || existing.shader == shader) return;
                 existing.shader = shader;
                 EditorUtility.SetDirty(existing);
                 return;
@@ -93,7 +107,7 @@ namespace XIII.EditorTools
             // Set these in the saved scene too, so the build keeps the fog shader variants.
             RenderSettings.skybox = null;
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.16f, 0.145f, 0.11f);
+            RenderSettings.ambientLight = new Color(0.12f, 0.105f, 0.082f);
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Exponential;
             RenderSettings.fogDensity = 0.04f;

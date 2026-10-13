@@ -92,11 +92,13 @@ namespace XIII
             PointLight(new Vector3(0f, 3.1f, 4f), 11f, 1.8f, 6f, LightCol);
             PointLight(new Vector3(0f, 3.1f, 10f), 11f, 1.8f, 6f, LightCol);
             PointLight(new Vector3(-3.2f, 2.8f, 7f), 7f, 1.2f, 3.5f, new Color(1f, 0.8f, 0.55f));
+            Dust(new Vector3(0f, 2.2f, 7f), new Vector3(8f, 3.2f, 12f), 160, 14f);
         }
 
         void Chandelier(Vector3 c, Material brass)
         {
             Box("Chain", c + new Vector3(0f, 0.4f, 0f), new Vector3(0.02f, 0.8f, 0.02f), brass);
+            Glow(c + Vector3.up * 0.05f, 2.4f, new Color(1f, 0.85f, 0.6f, 0.22f));
             Prim(PrimitiveType.Sphere, "Hub", null, c, Vector3.one * 0.18f, brass);
             Material bulb = Mats.Unlit(new Color(1f, 0.9f, 0.7f));
             for (int i = 0; i < 6; i++)
@@ -159,6 +161,7 @@ namespace XIII
 
             Box("CallPanel", new Vector3(1.25f, 1.25f, z - 0.01f), new Vector3(0.14f, 0.3f, 0.02f), brass);
             Prim(PrimitiveType.Sphere, "CallButton", null, new Vector3(1.25f, 1.25f, z - 0.025f), Vector3.one * 0.05f, Mats.Unlit(new Color(1f, 0.6f, 0.2f)));
+            Glow(new Vector3(1.25f, 1.25f, z - 0.06f), 0.2f, new Color(1f, 0.6f, 0.2f, 0.45f));
 
             Label("HOTEL TREDECIM", new Vector3(0f, 3.45f, z - 0.01f), Vector3.forward, 0.3f, Gold);
             Label("EST. MCMXIII", new Vector3(0f, 3.15f, z - 0.01f), Vector3.forward, 0.08f, new Color(0.7f, 0.55f, 0.28f));
@@ -187,6 +190,7 @@ namespace XIII
             Prim(PrimitiveType.Cylinder, "Table", null, new Vector3(4.1f, 0.3f, 4f), new Vector3(0.5f, 0.3f, 0.5f), wood, true);
             Prim(PrimitiveType.Cylinder, "LampStem", null, new Vector3(4.1f, 0.8f, 4f), new Vector3(0.03f, 0.2f, 0.03f), Mats.Lit(Brass, 0.7f));
             Prim(PrimitiveType.Cylinder, "LampShade", null, new Vector3(4.1f, 1.05f, 4f), new Vector3(0.32f, 0.1f, 0.32f), Mats.Unlit(new Color(1f, 0.82f, 0.55f)));
+            Glow(new Vector3(4.1f, 1.05f, 4f), 0.9f, new Color(1f, 0.8f, 0.55f, 0.25f));
 
             // Grandfather clock on the right wall, ticking.
             Box("ClockCase", new Vector3(4.72f, 1.1f, 8.5f), new Vector3(0.5f, 2.2f, 0.6f), wood, true);

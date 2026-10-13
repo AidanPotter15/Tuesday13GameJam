@@ -21,7 +21,7 @@ There are exactly **13 omens**, and each one is a bad-luck superstition or a lim
 | 5 | The fallen horseshoe | The brass horseshoe above the far door drops off its nail with a clang as you approach |
 | 6 | Room 13 | One door number reads **13** |
 | 7 | The backward clock | The clock runs backward and ticks too fast |
-| 8 | The watching portrait | The portrait's eyes follow you |
+| 8 | The watching portrait | The proprietor's painted eyes follow you |
 | 9 | The red light | One ceiling light is red and flickering |
 | 10 | The other guest | A too-tall bellhop stands at the end of the hall, head cocked. Get close and he flickers out with the light |
 | 11 | The footsteps | Hard heels walk behind you, out of step with you, and take two more steps after you stop |
@@ -38,7 +38,7 @@ Once per run, on a random floor between IV and IX, the power fails halfway down 
 The pause menu has Resume, Exit to menu, volume sliders (master, ambience, footsteps, effects), mouse sensitivity, and the omen journal.
 Settings and the journal are saved between sessions, including in the browser build.
 
-Everything is generated from code: the hotel is built from Unity primitives, the cat and the guest are procedural meshes baked by `tools/creatures.py`, and every sound is synthesised at startup.
+Everything is generated from code: the hotel is built from Unity primitives, the cat and the guest are procedural meshes baked by `tools/creatures.py`, the portrait is painted by `tools/portrait.py`, and every sound is synthesised at startup.
 There are no art or audio assets to import.
 
 ---
@@ -102,3 +102,5 @@ These credits also appear on the in-game title and end screens. Edit `XIIIGame.A
 | `Scripts/XInput.cs` | Works with the new Input System or the legacy Input Manager |
 | `Scripts/Editor/XIIISetup.cs` | `XIII` menu: project setup and WebGL build |
 | `Shaders/XIIIText.shader` | Depth-tested, fogged text for signs and door numbers |
+| `Shaders/XIIIGlow.shader` | Additive halos around lights and the drifting dust |
+| `Resources/XIII_Portrait.png` | The proprietor's oil portrait, painted by `tools/portrait.py` |

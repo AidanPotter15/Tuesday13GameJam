@@ -25,6 +25,9 @@ namespace XIII
         readonly List<TextMesh> plates = new List<TextMesh>();
         readonly List<Light> lights = new List<Light>();
         readonly List<Renderer> panels = new List<Renderer>();
+        readonly List<Renderer> glows = new List<Renderer>();
+        readonly List<ParticleSystemRenderer> dust = new List<ParticleSystemRenderer>();
+        Renderer exitGlow;
         TextMesh exitSign, poster, plaqueNumber;
         Transform horseshoe;
         ClockHands clock;
@@ -41,6 +44,14 @@ namespace XIII
             c.cam = pc.Cam.transform;
             c.BuildShell();
             c.BuildDressing();
+
+            // The higher you go, the dimmer and sicklier the lights.
+            float t = Mathf.Clamp01((floor - 1) / 12f);
+            foreach (Light l in c.lights)
+            {
+                l.intensity *= Mathf.Lerp(1f, 0.72f, t);
+                l.color = Color.Lerp(LightCol, new Color(0.88f, 0.95f, 0.6f), t * 0.6f);
+            }
             return c;
         }
 
@@ -92,6 +103,8 @@ namespace XIII
                 var panel = Box("LightPanel", new Vector3(0f, 2.975f, z), new Vector3(0.6f, 0.02f, 1.2f), Mats.Unlit(PanelOn));
                 panels.Add(panel.GetComponent<Renderer>());
                 lights.Add(PointLight(new Vector3(0f, 2.7f, z), 9f, 1.6f, 4.5f, LightCol));
+                glows.Add(Glow(new Vector3(0f, 2.86f, z), 1.9f, new Color(1f, 0.86f, 0.62f, 0.2f)));
+                dust.Add(Dust(new Vector3(0f, 1.5f, z), new Vector3(1.6f, 2.6f, 2.4f), 70, 6f));
             }
         }
 
@@ -200,28 +213,41 @@ namespace XIII
             // Exit sign.
             Box("ExitSign", new Vector3(-1.0f, 2.55f, Length - 0.04f), new Vector3(0.5f, 0.2f, 0.06f), Mats.Lit(new Color(0.08f, 0.08f, 0.08f)));
             exitSign = Label("EXIT", new Vector3(-1.0f, 2.55f, Length - 0.075f), Vector3.forward, 0.13f, new Color(0.3f, 1f, 0.45f));
+            exitGlow = Glow(new Vector3(-1.0f, 2.55f, Length - 0.15f), 0.9f, new Color(0.3f, 1f, 0.45f, 0.18f));
         }
 
+        // Eye positions in the painted portrait (tools/portrait.py), as 0..1 canvas coordinates from the bottom-left.
+        static readonly Vector2[] PortraitEyes = { new Vector2(0.425f, 0.645f), new Vector2(0.575f, 0.645f) };
+        const float CanvasW = 0.6f, CanvasH = 0.8f;
+
+        // An oil portrait of the proprietor, with real eyes set into the canvas.
         void BuildPortrait(Material gold)
         {
-            const float z = 12.5f;
-            Box("PortraitFrame", new Vector3(1.485f, 1.6f, z), new Vector3(0.03f, 0.95f, 0.75f), gold);
-            Box("Canvas", new Vector3(1.468f, 1.6f, z), new Vector3(0.01f, 0.84f, 0.64f), Mats.Lit(new Color(0.12f, 0.16f, 0.12f)));
-            Material skin = Mats.Lit(new Color(0.74f, 0.66f, 0.58f), 0.2f);
-            Box("Suit", new Vector3(1.462f, 1.3f, z), new Vector3(0.01f, 0.24f, 0.5f), Mats.Lit(Black));
-            Box("Neck", new Vector3(1.461f, 1.45f, z), new Vector3(0.01f, 0.1f, 0.1f), skin);
-            Prim(PrimitiveType.Sphere, "Head", null, new Vector3(1.455f, 1.66f, z), new Vector3(0.03f, 0.34f, 0.26f), skin);
-            Prim(PrimitiveType.Sphere, "Hair", null, new Vector3(1.452f, 1.77f, z), new Vector3(0.03f, 0.16f, 0.28f), Mats.Lit(new Color(0.06f, 0.04f, 0.03f)));
-            Box("Mouth", new Vector3(1.438f, 1.56f, z), new Vector3(0.005f, 0.012f, 0.07f), Mats.Lit(new Color(0.35f, 0.08f, 0.08f)));
-            foreach (float dz in new[] { -0.055f, 0.055f })
+            const float z = 12.5f, y = 1.6f, x = 1.468f;
+            Box("PortraitFrame", new Vector3(1.485f, y, z), new Vector3(0.03f, CanvasH + 0.15f, CanvasW + 0.16f), gold);
+            Box("FrameLip", new Vector3(1.475f, y, z), new Vector3(0.012f, CanvasH + 0.03f, CanvasW + 0.03f), Mats.Lit(new Color(0.2f, 0.13f, 0.06f), 0.5f));
+            var tex = Resources.Load<Texture2D>("XIII_Portrait");
+            Material paint = tex != null ? Mats.LitTextured(tex, 0.3f) : Mats.Lit(new Color(0.12f, 0.16f, 0.12f));
+            // A quad's front faces its local -Z, so this faces the corridor with the image the right way round.
+            Prim(PrimitiveType.Quad, "Canvas", null, new Vector3(x, y, z), new Vector3(CanvasW, CanvasH, 1f), paint, false, Quaternion.LookRotation(Vector3.right));
+
+            Material white = Mats.Lit(new Color(0.62f, 0.58f, 0.5f), 0.5f);
+            Material pupilMat = Mats.Lit(new Color(0.03f, 0.025f, 0.02f), 0.8f);
+            foreach (Vector2 e in PortraitEyes)
             {
-                Transform pivot = Empty("Eye", new Vector3(1.44f, 1.68f, z + dz), Quaternion.LookRotation(Vector3.left));
-                Prim(PrimitiveType.Sphere, "Eyeball", pivot, Vector3.zero, Vector3.one * 0.045f, Mats.Lit(new Color(0.9f, 0.87f, 0.8f), 0.6f));
-                Prim(PrimitiveType.Sphere, "Pupil", pivot, new Vector3(0f, 0f, 0.018f), Vector3.one * 0.02f, Mats.Lit(Black, 0.8f));
+                Vector3 p = new Vector3(x - 0.002f, y + (e.y - 0.5f) * CanvasH, z - (e.x - 0.5f) * CanvasW);
+                Transform pivot = Empty("Eye", p, Quaternion.LookRotation(Vector3.left)); // local +Z points out of the painting
+                Prim(PrimitiveType.Sphere, "White", pivot, Vector3.zero, new Vector3(0.042f, 0.024f, 0.004f), white);
+                Transform pupil = Prim(PrimitiveType.Sphere, "Pupil", pivot, new Vector3(0f, 0f, 0.0025f), new Vector3(0.017f, 0.017f, 0.003f), pupilMat).transform;
                 var eye = pivot.gameObject.AddComponent<EyeFollow>();
                 eye.Target = cam;
+                eye.Pupil = pupil;
                 eyes.Add(eye);
             }
+
+            float plateY = y - CanvasH * 0.5f - 0.035f;
+            Box("NamePlate", new Vector3(1.466f, plateY, z), new Vector3(0.008f, 0.04f, 0.26f), Mats.Lit(Brass, 0.75f));
+            Label("A. TREDECIM  ·  PROPRIETOR", new Vector3(1.4615f, plateY, z), Vector3.right, 0.018f, Ink);
         }
 
         // ---------- omens ----------
@@ -250,6 +276,7 @@ namespace XIII
                 case Omens.ExitSign:
                     exitSign.text = "XIII";
                     exitSign.color = new Color(1f, 0.15f, 0.1f);
+                    if (exitGlow != null) exitGlow.sharedMaterial = Mats.Glow(new Color(1f, 0.15f, 0.1f, 0.22f));
                     break;
             }
         }
@@ -336,6 +363,11 @@ namespace XIII
             f.Panel = panels[index];
             f.OnMat = on;
             f.OffMat = Mats.Unlit(new Color(0.15f, 0.02f, 0.02f));
+            if (glows[index] != null)
+            {
+                glows[index].sharedMaterial = Mats.Glow(new Color(1f, 0.1f, 0.08f, 0.3f));
+                f.Glow = glows[index];
+            }
         }
 
         void AddGuest()
@@ -345,6 +377,7 @@ namespace XIII
             phantom.Rig = Creatures.Build(CreatureData.Guest, g, Creatures.GuestMaterials());
             phantom.Target = pc.transform;
             phantom.Lamp = lights[3]; // the light just in front of him
+            phantom.LampGlow = glows[3];
             phantom.Distance = 9f;
         }
 
@@ -377,6 +410,8 @@ namespace XIII
             {
                 lights[i].enabled = on;
                 panels[i].enabled = on;
+                if (glows[i] != null) glows[i].enabled = on;
+                if (dust[i] != null) dust[i].enabled = on; // the EXIT sign stays lit: it's on the emergency circuit
             }
         }
 

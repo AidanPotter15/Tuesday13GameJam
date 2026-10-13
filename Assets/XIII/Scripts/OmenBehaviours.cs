@@ -125,21 +125,41 @@ namespace XIII
         }
     }
 
-    // Portrait eyes. At rest they stare straight out of the wall; when Follow is on they track you.
+    // Painted eyes set into the portrait. At rest they stare straight out; when Follow is on,
+    // the pupils slide to keep looking at you.
     public class EyeFollow : MonoBehaviour
     {
         public Transform Target;
+        public Transform Pupil;
         public bool Follow;
-        Quaternion rest;
+        public float RangeX = 0.011f, RangeY = 0.005f;
+        Vector3 rest;
 
-        void Start() { rest = transform.rotation; }
+        void Start() { rest = Pupil.localPosition; }
 
         void LateUpdate()
         {
-            if (!Follow || Target == null) return;
-            Quaternion want = Quaternion.LookRotation(Target.position - transform.position);
-            want = Quaternion.RotateTowards(rest, want, 40f);
-            transform.rotation = Quaternion.Slerp(transform.rotation, want, Time.deltaTime * 6f);
+            Vector3 want = rest;
+            if (Follow && Target != null)
+            {
+                Vector3 d = transform.InverseTransformDirection(Target.position - transform.position).normalized;
+                want += new Vector3(Mathf.Clamp(d.x * 0.03f, -RangeX, RangeX), Mathf.Clamp(d.y * 0.02f, -RangeY, RangeY), 0f);
+            }
+            Pupil.localPosition = Vector3.Lerp(Pupil.localPosition, want, Time.deltaTime * 8f);
+        }
+    }
+
+    // Keeps a glow quad facing the camera.
+    public class Billboard : MonoBehaviour
+    {
+        public static Transform View;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() { View = null; }
+
+        void LateUpdate()
+        {
+            if (View != null) transform.rotation = Quaternion.LookRotation(transform.position - View.position);
         }
     }
 
@@ -194,7 +214,7 @@ namespace XIII
     public class Flicker : MonoBehaviour
     {
         public Light Light;
-        public Renderer Panel;
+        public Renderer Panel, Glow;
         public Material OnMat, OffMat;
         float baseIntensity, seed;
 
@@ -210,6 +230,7 @@ namespace XIII
             bool off = n < 0.3f;
             Light.intensity = off ? baseIntensity * 0.05f : baseIntensity * (0.7f + 0.3f * n);
             if (Panel != null) Panel.sharedMaterial = off ? OffMat : OnMat;
+            if (Glow != null) Glow.enabled = !off && Light.enabled;
         }
     }
 
@@ -220,6 +241,7 @@ namespace XIII
         public Transform Target;
         public Dictionary<string, Transform> Rig;
         public Light Lamp;
+        public Renderer LampGlow;
         public float Distance = 9f;
 
         Transform head;
@@ -265,9 +287,11 @@ namespace XIII
                 bool on = k % 2 == 1;
                 foreach (var r in rends) r.enabled = on;
                 if (Lamp != null) Lamp.intensity = on ? baseIntensity : baseIntensity * 0.15f;
+                if (LampGlow != null) LampGlow.enabled = on;
                 yield return new WaitForSeconds(Random.Range(0.04f, 0.11f));
             }
             if (Lamp != null) Lamp.intensity = baseIntensity;
+            if (LampGlow != null) LampGlow.enabled = true;
             foreach (var r in rends) r.enabled = false;
         }
     }

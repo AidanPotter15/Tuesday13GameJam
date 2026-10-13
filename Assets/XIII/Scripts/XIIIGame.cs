@@ -38,7 +38,7 @@ namespace XIII
         string msgTitle = "", msgSub = "";
         Color msgColor = Color.white;
 
-        Texture2D vignette, texPanel, texButton, texHover;
+        Texture2D vignette, grain, texPanel, texButton, texHover;
         GUIStyle big, mid, small, label, labelRight, heading, button;
 
         static readonly Color Red = new Color(0.85f, 0.12f, 0.1f);
@@ -47,7 +47,7 @@ namespace XIII
         static readonly Color Dim = new Color(0.55f, 0.52f, 0.46f);
 
         const float HumVolume = 0.22f;
-        static readonly Color Ambient = new Color(0.16f, 0.145f, 0.11f);
+        static readonly Color Ambient = new Color(0.12f, 0.105f, 0.082f); // dark between the pools of light
         bool Finale { get { return floor >= 13; } }
 
         void Awake()
@@ -62,6 +62,7 @@ namespace XIII
             RenderSettings.fogColor = new Color(0.04f, 0.033f, 0.024f);
 
             player = new GameObject("Player").AddComponent<PlayerController>();
+            Billboard.View = player.Cam.transform;
 
             hum = gameObject.AddComponent<AudioSource>();
             hum.clip = Sfx.Hum;
@@ -74,6 +75,7 @@ namespace XIII
             ui.ignoreListenerPause = true;
 
             vignette = MakeVignette();
+            grain = MakeGrain();
             texPanel = Solid(new Color(0.06f, 0.045f, 0.035f, 0.9f));
             texButton = Solid(new Color(0.14f, 0.09f, 0.07f, 0.95f));
             texHover = Solid(new Color(0.42f, 0.1f, 0.08f, 1f));
@@ -428,6 +430,14 @@ namespace XIII
 
             GUI.color = Color.white;
             GUI.DrawTexture(full, vignette);
+            if (Event.current.type == EventType.Repaint)
+            {
+                // Film grain: the same noise tile, jumping to a new offset every frame.
+                GUI.color = new Color(1f, 1f, 1f, 0.07f);
+                float tile = 192f * u;
+                GUI.DrawTextureWithTexCoords(full, grain, new Rect(Random.value, Random.value, W / tile, H / tile));
+                GUI.color = Color.white;
+            }
             if (redFlash > 0f) { GUI.color = new Color(0.6f, 0f, 0f, redFlash * 0.55f); GUI.DrawTexture(full, Texture2D.whiteTexture); }
             if (fade > 0f) { GUI.color = new Color(0f, 0f, 0f, fade); GUI.DrawTexture(full, Texture2D.whiteTexture); }
             GUI.color = Color.white;
@@ -666,6 +676,23 @@ namespace XIII
             t.SetPixel(0, 0, c);
             t.Apply();
             return t;
+        }
+
+        // Light and dark specks in equal measure, so the grain doesn't wash the picture out.
+        static Texture2D MakeGrain()
+        {
+            const int N = 128;
+            var tex = new Texture2D(N, N, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Point };
+            var px = new Color32[N * N];
+            var rng = new System.Random(13);
+            for (int i = 0; i < px.Length; i++)
+            {
+                byte v = (byte)(rng.NextDouble() < 0.5 ? 0 : 255);
+                px[i] = new Color32(v, v, v, (byte)(rng.NextDouble() * 255));
+            }
+            tex.SetPixels32(px);
+            tex.Apply();
+            return tex;
         }
 
         static Texture2D MakeVignette()
