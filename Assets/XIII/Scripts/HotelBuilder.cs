@@ -87,6 +87,69 @@ namespace XIII
             return l;
         }
 
+        // A soft camera-facing halo, to fake bloom around a light. Null if the glow shader is missing.
+        protected Renderer Glow(Vector3 pos, float size, Color color, Transform parent = null)
+        {
+            Material m = Mats.Glow(color);
+            if (m == null) return null;
+            var go = new GameObject("Glow");
+            go.transform.SetParent(parent != null ? parent : transform, false);
+            go.transform.localPosition = pos;
+            go.transform.localScale = Vector3.one * size;
+            go.AddComponent<MeshFilter>().sharedMesh = Mats.GlowQuad;
+            var r = go.AddComponent<MeshRenderer>();
+            r.sharedMaterial = m;
+            r.shadowCastingMode = ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            go.AddComponent<Billboard>();
+            return r;
+        }
+
+        // Dust drifting slowly through a box of air (usually under a light).
+        protected ParticleSystemRenderer Dust(Vector3 center, Vector3 size, int max, float rate)
+        {
+            Material m = Mats.Glow(new Color(1f, 0.92f, 0.75f, 1f));
+            if (m == null) return null;
+            var go = new GameObject("Dust");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = center;
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            var main = ps.main;
+            main.loop = true;
+            main.prewarm = true;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(8f, 14f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.005f, 0.03f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.01f, 0.022f);
+            main.startColor = new Color(1f, 0.92f, 0.75f, 0.55f);
+            main.maxParticles = max;
+            main.gravityModifier = -0.0015f;
+
+            var emission = ps.emission;
+            emission.rateOverTime = rate;
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Box;
+            shape.scale = size;
+            var noise = ps.noise;
+            noise.enabled = true;
+            noise.strength = 0.04f;
+            noise.frequency = 0.4f;
+            var fade = ps.colorOverLifetime;
+            fade.enabled = true;
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                      new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.25f), new GradientAlphaKey(1f, 0.75f), new GradientAlphaKey(0f, 1f) });
+            fade.color = g;
+
+            var r = go.GetComponent<ParticleSystemRenderer>();
+            r.sharedMaterial = m;
+            r.shadowCastingMode = ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            ps.Play();
+            return r;
+        }
+
         // A wall clock. outward points from the wall toward the viewer; the clock's local +Z faces that way.
         protected ClockHands BuildClock(Vector3 pos, Vector3 outward, Material wood)
         {
