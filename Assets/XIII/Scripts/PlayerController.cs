@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 namespace XIII
@@ -13,7 +12,6 @@ namespace XIII
         public float Sensitivity = 0.1f; // degrees per pixel
         public float WalkSpeed = 2.3f;
         public float RunSpeed = 3.8f;
-        public event Action OnStep;
 
         CharacterController cc;
         AudioSource stepSource;
@@ -41,7 +39,7 @@ namespace XIII
             stepSource = gameObject.AddComponent<AudioSource>();
             stepSource.playOnAwake = false;
             stepSource.spatialBlend = 0f;
-            stepSource.volume = 0.35f;
+            stepSource.volume = 0.2f; // quiet: it plays constantly
         }
 
         public void Teleport(Vector3 position, float yawDegrees)
@@ -79,14 +77,13 @@ namespace XIII
             delta.y = 0f;
             float moved = delta.magnitude;
 
-            float stride = running ? 0.95f : 0.72f;
+            float stride = running ? 1.0f : 0.8f;
             stepAcc += moved;
             if (stepAcc >= stride)
             {
                 stepAcc = 0f;
-                stepSource.pitch = UnityEngine.Random.Range(0.85f, 1.1f);
+                stepSource.pitch = Random.Range(0.92f, 1.05f);
                 stepSource.PlayOneShot(Sfx.Step);
-                if (OnStep != null) OnStep();
             }
 
             // head bob

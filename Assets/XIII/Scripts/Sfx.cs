@@ -8,7 +8,7 @@ namespace XIII
         const int SR = 22050;
         const float TAU = Mathf.PI * 2f;
 
-        public static AudioClip Hum, Step, Door, Stinger, Chime, Whisper, Tick, Thud;
+        public static AudioClip Hum, Step, Heel, Clink, Door, Stinger, Chime, Whisper, Tick, Thud;
 
         static System.Random rng = new System.Random(13);
         static float Noise() { return (float)(rng.NextDouble() * 2.0 - 1.0); }
@@ -18,6 +18,8 @@ namespace XIII
             if (Hum != null) return;
             Hum = MakeHum();
             Step = MakeStep();
+            Heel = MakeHeel();
+            Clink = MakeClink();
             Door = MakeDoor();
             Stinger = MakeStinger();
             Chime = MakeChime();
@@ -51,18 +53,62 @@ namespace XIII
             return Clip("hum", d);
         }
 
+        // Your own steps: soft, muffled, on carpet.
         static AudioClip MakeStep()
         {
-            int n = (int)(SR * 0.2f);
+            int n = (int)(SR * 0.18f);
+            var d = new float[n];
+            float lp = 0f, lp2 = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SR;
+                lp += (Noise() - lp) * 0.08f;
+                lp2 += (lp - lp2) * 0.08f;
+                float env = Mathf.Min(1f, t * 150f) * Mathf.Exp(-t * 28f);
+                d[i] = (lp2 * 3f + Mathf.Sin(TAU * 70f * t) * 0.25f) * env;
+            }
+            return Clip("step", d);
+        }
+
+        // The follower: hard heels, which is wrong on a carpeted floor.
+        static AudioClip MakeHeel()
+        {
+            int n = (int)(SR * 0.25f);
             var d = new float[n];
             float lp = 0f;
             for (int i = 0; i < n; i++)
             {
                 float t = i / (float)SR;
-                lp += (Noise() - lp) * 0.25f;
-                d[i] = lp * Mathf.Exp(-t * 30f) * 0.9f + Mathf.Sin(TAU * 85f * t) * Mathf.Exp(-t * 40f) * 0.6f;
+                float x = Noise();
+                lp += (x - lp) * 0.3f;
+                d[i] = (x - lp) * Mathf.Exp(-t * 110f) * 0.55f
+                     + Mathf.Sin(TAU * 140f * t) * Mathf.Exp(-t * 25f) * 0.45f
+                     + Mathf.Sin(TAU * 430f * t) * Mathf.Exp(-t * 60f) * 0.25f;
             }
-            return Clip("step", d);
+            return Clip("heel", d);
+        }
+
+        // Metal hitting the floor and bouncing twice.
+        static AudioClip MakeClink()
+        {
+            int n = (int)(SR * 1.4f);
+            var d = new float[n];
+            float[] hits = { 0f, 0.21f, 0.34f };
+            float[] amps = { 1f, 0.45f, 0.2f };
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SR;
+                float s = 0f;
+                for (int h = 0; h < hits.Length; h++)
+                {
+                    float tt = t - hits[h];
+                    if (tt < 0f) continue;
+                    float ring = Mathf.Sin(TAU * 1650f * tt) * 0.5f + Mathf.Sin(TAU * 2490f * tt) * 0.3f + Mathf.Sin(TAU * 4130f * tt) * 0.2f;
+                    s += amps[h] * (ring * Mathf.Exp(-tt * (h == 0 ? 6f : 12f)) + Noise() * Mathf.Exp(-tt * 200f) * 0.6f);
+                }
+                d[i] = s * 0.6f;
+            }
+            return Clip("clink", d);
         }
 
         static AudioClip MakeDoor()

@@ -1,4 +1,3 @@
-using System.Collections;
 using UnityEngine;
 
 namespace XIII
@@ -140,13 +139,54 @@ namespace XIII
         }
     }
 
-    // Someone walks a few steps behind you, and doesn't always stop when you do.
+    // The horseshoe drops off its nail as you approach the far door. The luck runs out.
+    public class HorseshoeFall : MonoBehaviour
+    {
+        public Transform Target;
+        public Vector3 FloorPos;
+        public Quaternion FloorRot;
+        Vector3 startPos;
+        Quaternion startRot;
+        float t = -1f, delay;
+        AudioSource src;
+
+        void Start()
+        {
+            startPos = transform.localPosition;
+            startRot = transform.localRotation;
+            delay = Random.Range(0.2f, 1.2f);
+            src = gameObject.AddComponent<AudioSource>();
+            src.spatialBlend = 1f;
+            src.minDistance = 2f;
+            src.maxDistance = 25f;
+            src.rolloffMode = AudioRolloffMode.Linear;
+        }
+
+        void Update()
+        {
+            if (Target == null || t >= 1f) return;
+            if (t < 0f)
+            {
+                if (Target.position.z > startPos.z - 12f) delay -= Time.deltaTime;
+                if (delay <= 0f) t = 0f;
+                return;
+            }
+            t = Mathf.Min(1f, t + Time.deltaTime / 0.5f);
+            transform.localPosition = Vector3.Lerp(startPos, FloorPos, t * t); // accelerates like a real drop
+            transform.localRotation = Quaternion.Slerp(startRot, FloorRot, t);
+            if (t >= 1f) src.PlayOneShot(Sfx.Clink);
+        }
+    }
+
+    // Someone walks behind you: hard heels, out of step with you, and they take two more steps after you stop.
     public class FootstepsBehind : MonoBehaviour
     {
         public PlayerController Player;
         AudioSource src;
-        float lastStep;
-        int extra;
+        Vector3 lastPos;
+        float nextStep, distance = 7f;
+        int afterSteps;
+        bool wasMoving;
 
         void Start()
         {
@@ -155,41 +195,34 @@ namespace XIII
             src = go.AddComponent<AudioSource>();
             src.spatialBlend = 1f;
             src.minDistance = 1.5f;
-            src.maxDistance = 15f;
-            src.volume = 0.8f;
-            Player.OnStep += HandleStep;
-        }
-
-        void OnDestroy()
-        {
-            if (Player != null) Player.OnStep -= HandleStep;
-        }
-
-        void HandleStep()
-        {
-            lastStep = Time.time;
-            extra = 2;
-            StartCoroutine(Echo(0.3f));
+            src.maxDistance = 16f;
+            src.volume = 0.9f;
+            lastPos = Player.transform.position;
         }
 
         void Update()
         {
-            if (extra > 0 && Time.time - lastStep > 0.9f)
-            {
-                extra--;
-                lastStep = Time.time - 0.35f;
-                StartCoroutine(Echo(0f));
-            }
-        }
-
-        IEnumerator Echo(float delay)
-        {
-            if (delay > 0f) yield return new WaitForSeconds(delay);
-            if (Player == null) yield break;
+            if (Player == null) return;
             Transform p = Player.transform;
-            src.transform.position = p.position - p.forward * 3.2f + Vector3.up * 0.2f;
-            src.pitch = Random.Range(0.75f, 0.85f);
-            src.PlayOneShot(Sfx.Step);
+            bool moving = (p.position - lastPos).sqrMagnitude > 0.000001f;
+            lastPos = p.position;
+
+            if (moving)
+            {
+                if (!wasMoving) nextStep = Mathf.Max(nextStep, Time.time + 0.45f);
+                afterSteps = 2;
+            }
+            wasMoving = moving;
+
+            if ((moving || afterSteps > 0) && Time.time >= nextStep)
+            {
+                if (moving) distance = Mathf.Max(3.5f, distance - 0.05f);
+                else { afterSteps--; distance = Mathf.Max(2.5f, distance - 0.6f); } // it keeps coming
+                nextStep = Time.time + 0.64f + Random.Range(-0.03f, 0.03f);
+                src.transform.position = p.position - p.forward * distance + Vector3.up * 0.1f;
+                src.pitch = Random.Range(0.93f, 1.0f);
+                src.PlayOneShot(Sfx.Heel);
+            }
         }
     }
 }

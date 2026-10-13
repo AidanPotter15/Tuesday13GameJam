@@ -262,14 +262,16 @@ namespace XIII
             Prim(PrimitiveType.Cylinder, "Folded", umbrellaInStand.transform, new Vector3(1.28f, 0.78f, 17.5f), new Vector3(0.07f, 0.28f, 0.07f), Mats.Lit(new Color(0.25f, 0.03f, 0.04f)));
             Box("Handle", new Vector3(1.28f, 1.22f, 17.53f), new Vector3(0.03f, 0.03f, 0.1f), Mats.Lit(Wood, 0.5f), false, umbrellaInStand.transform);
 
-            // Horseshoe above the far door, hung the lucky way: opening up.
-            horseshoe = Empty("Horseshoe", new Vector3(0f, 2.68f, Length - 0.02f), Quaternion.identity);
-            Material iron = Mats.Lit(new Color(0.55f, 0.5f, 0.42f), 0.6f);
+            // Brass horseshoe on a dark plaque above the far door, hung the lucky way: opening up.
+            Box("HorseshoePlaque", new Vector3(0f, 2.64f, Length - 0.015f), new Vector3(0.5f, 0.42f, 0.03f), Mats.Lit(new Color(0.12f, 0.07f, 0.04f), 0.4f));
+            Prim(PrimitiveType.Sphere, "Nail", null, new Vector3(0f, 2.62f, Length - 0.04f), Vector3.one * 0.03f, Mats.Lit(new Color(0.3f, 0.3f, 0.3f), 0.7f));
+            horseshoe = Empty("Horseshoe", new Vector3(0f, 2.68f, Length - 0.05f), Quaternion.identity);
+            Material shoe = Mats.Lit(Brass, 0.75f);
             for (int k = 0; k <= 8; k++)
             {
-                float a = Mathf.Lerp(-115f, 115f, k / 8f);
-                float r = 0.14f, rad = a * Mathf.Deg2Rad;
-                Box("Shoe", new Vector3(Mathf.Sin(rad) * r, -Mathf.Cos(rad) * r, 0f), new Vector3(0.07f, 0.04f, 0.02f), iron, false, horseshoe, Quaternion.Euler(0f, 0f, a));
+                float a = Mathf.Lerp(-105f, 105f, k / 8f);
+                float r = 0.16f, rad = a * Mathf.Deg2Rad;
+                Box("Shoe", new Vector3(Mathf.Sin(rad) * r, -Mathf.Cos(rad) * r, 0f), new Vector3(0.085f, 0.05f, 0.03f), shoe, false, horseshoe, Quaternion.Euler(0f, 0f, a));
             }
 
             // Exit sign.
@@ -336,7 +338,12 @@ namespace XIII
                 case Omens.Ladder: AddLadder(); break;
                 case Omens.Mirror: BreakMirror(); break;
                 case Omens.Umbrella: OpenUmbrella(); break;
-                case Omens.Horseshoe: horseshoe.localRotation = Quaternion.Euler(0f, 0f, 180f); break;
+                case Omens.Horseshoe:
+                    var fall = horseshoe.gameObject.AddComponent<HorseshoeFall>();
+                    fall.Target = pc.transform;
+                    fall.FloorPos = new Vector3(0.2f, 0.02f, 25.0f);
+                    fall.FloorRot = Quaternion.Euler(90f, 25f, 0f);
+                    break;
                 case Omens.Room13: plates[Random.Range(0, plates.Count)].text = "13"; break;
                 case Omens.Clock: clock.Reverse = true; break;
                 case Omens.Portrait: foreach (var e in eyes) e.Follow = true; break;

@@ -18,13 +18,13 @@ There are exactly **13 omens**, and each one is a bad-luck superstition or a lim
 | 2 | The ladder | A ladder leans across the hall |
 | 3 | The broken mirror | The mirror is cracked and there are shards on the carpet |
 | 4 | The open umbrella | The umbrella is out of its stand and open indoors |
-| 5 | The fallen horseshoe | The horseshoe over the far door is upside down, so the luck drains out |
+| 5 | The fallen horseshoe | The brass horseshoe above the far door drops off its nail with a clang as you approach |
 | 6 | Room 13 | One door number reads **13** |
 | 7 | The backward clock | The clock runs backward and ticks too fast |
 | 8 | The watching portrait | The portrait's eyes follow you |
 | 9 | The red light | One ceiling light is red and flickering |
 | 10 | The other guest | A tall figure stands at the end of the hall and is gone when you get close |
-| 11 | The footsteps | Someone walks a few steps behind you |
+| 11 | The footsteps | Hard heels walk behind you, out of step with you, and take two more steps after you stop |
 | 12 | The open door | A room door hangs open, with whispering inside |
 | 13 | The thirteenth sign | The EXIT sign reads **XIII** |
 
@@ -79,9 +79,9 @@ These credits also appear on the in-game title and end screens. Edit `XIIIGame.A
 |------|--------------|
 | `Scripts/XIIIGame.cs` | Game loop, floor counter, omen choice, transitions, all UI (IMGUI) |
 | `Scripts/Corridor.cs` | Builds the corridor and applies each omen |
-| `Scripts/OmenBehaviours.cs` | Cat, eyes, clock, flicker, vanishing guest, footsteps |
+| `Scripts/OmenBehaviours.cs` | Cat, eyes, clock, flicker, vanishing guest, falling horseshoe, footsteps |
 | `Scripts/PlayerController.cs` | First-person movement, head bob, footsteps |
-| `Scripts/Sfx.cs` | Procedural audio (hum, steps, door, stinger, bell, whisper, tick, thud) |
+| `Scripts/Sfx.cs` | Procedural audio (hum, steps, heels, clink, door, stinger, bell, whisper, tick, thud) |
 | `Scripts/Mats.cs` | Material factory (URP or Built-in) |
 | `Scripts/XInput.cs` | Works with the new Input System or the legacy Input Manager |
 | `Scripts/Editor/XIIISetup.cs` | `XIII` menu: project setup and WebGL build |
