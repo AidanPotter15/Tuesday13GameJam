@@ -8,7 +8,7 @@ namespace XIII
         const int SR = 22050;
         const float TAU = Mathf.PI * 2f;
 
-        public static AudioClip Hum, Step, Door, Stinger, Chime, Whisper, Tick, Thud;
+        public static AudioClip Hum, Step, Heel, Clink, Door, Stinger, Chime, Whisper, Tick, Thud, Scream, PowerDown, Ding, Bell;
 
         static System.Random rng = new System.Random(13);
         static float Noise() { return (float)(rng.NextDouble() * 2.0 - 1.0); }
@@ -18,12 +18,18 @@ namespace XIII
             if (Hum != null) return;
             Hum = MakeHum();
             Step = MakeStep();
+            Heel = MakeHeel();
+            Clink = MakeClink();
             Door = MakeDoor();
             Stinger = MakeStinger();
             Chime = MakeChime();
             Whisper = MakeWhisper();
             Tick = MakeTick();
             Thud = MakeThud();
+            Scream = MakeScream();
+            PowerDown = MakePowerDown();
+            Ding = MakeDing();
+            Bell = MakeBell();
         }
 
         static AudioClip Clip(string name, float[] d)
@@ -51,18 +57,62 @@ namespace XIII
             return Clip("hum", d);
         }
 
+        // Your own steps: soft, muffled, on carpet.
         static AudioClip MakeStep()
         {
-            int n = (int)(SR * 0.2f);
+            int n = (int)(SR * 0.18f);
+            var d = new float[n];
+            float lp = 0f, lp2 = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SR;
+                lp += (Noise() - lp) * 0.08f;
+                lp2 += (lp - lp2) * 0.08f;
+                float env = Mathf.Min(1f, t * 150f) * Mathf.Exp(-t * 28f);
+                d[i] = (lp2 * 3f + Mathf.Sin(TAU * 70f * t) * 0.25f) * env;
+            }
+            return Clip("step", d);
+        }
+
+        // The follower: hard heels, which is wrong on a carpeted floor.
+        static AudioClip MakeHeel()
+        {
+            int n = (int)(SR * 0.25f);
             var d = new float[n];
             float lp = 0f;
             for (int i = 0; i < n; i++)
             {
                 float t = i / (float)SR;
-                lp += (Noise() - lp) * 0.25f;
-                d[i] = lp * Mathf.Exp(-t * 30f) * 0.9f + Mathf.Sin(TAU * 85f * t) * Mathf.Exp(-t * 40f) * 0.6f;
+                float x = Noise();
+                lp += (x - lp) * 0.3f;
+                d[i] = (x - lp) * Mathf.Exp(-t * 110f) * 0.55f
+                     + Mathf.Sin(TAU * 140f * t) * Mathf.Exp(-t * 25f) * 0.45f
+                     + Mathf.Sin(TAU * 430f * t) * Mathf.Exp(-t * 60f) * 0.25f;
             }
-            return Clip("step", d);
+            return Clip("heel", d);
+        }
+
+        // Metal hitting the floor and bouncing twice.
+        static AudioClip MakeClink()
+        {
+            int n = (int)(SR * 1.4f);
+            var d = new float[n];
+            float[] hits = { 0f, 0.21f, 0.34f };
+            float[] amps = { 1f, 0.45f, 0.2f };
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SR;
+                float s = 0f;
+                for (int h = 0; h < hits.Length; h++)
+                {
+                    float tt = t - hits[h];
+                    if (tt < 0f) continue;
+                    float ring = Mathf.Sin(TAU * 1650f * tt) * 0.5f + Mathf.Sin(TAU * 2490f * tt) * 0.3f + Mathf.Sin(TAU * 4130f * tt) * 0.2f;
+                    s += amps[h] * (ring * Mathf.Exp(-tt * (h == 0 ? 6f : 12f)) + Noise() * Mathf.Exp(-tt * 200f) * 0.6f);
+                }
+                d[i] = s * 0.6f;
+            }
+            return Clip("clink", d);
         }
 
         static AudioClip MakeDoor()
@@ -164,6 +214,80 @@ namespace XIII
                 d[i] = (Mathf.Sin(TAU * 55f * t) + lp * 0.7f) * Mathf.Exp(-t * 9f);
             }
             return Clip("thud", d);
+        }
+
+        // The jump scare: a harsh, falling cluster of detuned saws over a noise burst, driven into distortion.
+        static AudioClip MakeScream()
+        {
+            int n = (int)(SR * 1.6f);
+            var d = new float[n];
+            float[] freqs = { 311f, 329.6f, 440f, 466.2f, 622.3f, 698.5f };
+            var ph = new float[freqs.Length];
+            float lp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SR;
+                float bend = 1f - 0.3f * t + 0.02f * Mathf.Sin(TAU * 7f * t);
+                float s = 0f;
+                for (int k = 0; k < freqs.Length; k++)
+                {
+                    ph[k] += freqs[k] * bend / SR;
+                    s += (ph[k] % 1f) * 2f - 1f;
+                }
+                lp += (Noise() - lp) * 0.5f;
+                float env = Mathf.Min(1f, t * 300f) * Mathf.Exp(-t * 1.8f);
+                float x = (s / freqs.Length * 1.4f + lp * 0.8f * Mathf.Exp(-t * 3f)) * env;
+                d[i] = (float)System.Math.Tanh(x * 3f) * 0.9f;
+            }
+            return Clip("scream", d);
+        }
+
+        // The lights dying: a clunk, then the mains hum sagging away to nothing.
+        static AudioClip MakePowerDown()
+        {
+            int n = (int)(SR * 1.4f);
+            var d = new float[n];
+            float ph = 0f, lp = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SR;
+                float f = Mathf.Lerp(100f, 18f, Mathf.Clamp01(t / 1.2f));
+                ph += f / SR;
+                float hum = (Mathf.Sin(TAU * ph) + 0.4f * Mathf.Sin(TAU * ph * 2f)) * Mathf.Exp(-t * 2f) * 0.5f;
+                lp += (Noise() - lp) * 0.2f;
+                float clunk = (lp * 0.9f + Mathf.Sin(TAU * 50f * t) * 0.6f) * Mathf.Exp(-t * 22f);
+                d[i] = hum + clunk;
+            }
+            return Clip("powerdown", d);
+        }
+
+        // Lift arrival: two-tone ding.
+        static AudioClip MakeDing()
+        {
+            int n = (int)(SR * 1.8f);
+            var d = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)SR;
+                d[i] = BellTone(1318.5f, t) * 0.5f + BellTone(1046.5f, t - 0.38f) * 0.5f;
+            }
+            return Clip("ding", d);
+        }
+
+        // Reception desk bell.
+        static AudioClip MakeBell()
+        {
+            int n = (int)(SR * 1.5f);
+            var d = new float[n];
+            for (int i = 0; i < n; i++) d[i] = BellTone(2093f, i / (float)SR) * 0.6f;
+            return Clip("bell", d);
+        }
+
+        static float BellTone(float f, float t)
+        {
+            if (t < 0f) return 0f;
+            return (Mathf.Sin(TAU * f * t) + 0.35f * Mathf.Sin(TAU * f * 2.76f * t) * Mathf.Exp(-t * 4f)
+                    + 0.15f * Mathf.Sin(TAU * f * 5.4f * t) * Mathf.Exp(-t * 8f)) * Mathf.Exp(-t * 3f) * Mathf.Min(1f, t * 400f);
         }
     }
 }

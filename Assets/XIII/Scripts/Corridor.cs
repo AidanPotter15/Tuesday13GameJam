@@ -6,7 +6,7 @@ namespace XIII
 {
     // Builds one hotel corridor out of primitives. The corridor runs along +Z from the
     // door you came through (z = 0) to the next door (z = Length).
-    public class Corridor : MonoBehaviour
+    public class Corridor : HotelBuilder
     {
         public const float Length = 26f, HalfWidth = 1.5f, Height = 3f;
         public const float ForwardTrigger = 25.3f, BackTrigger = 0.75f;
@@ -15,20 +15,6 @@ namespace XIII
         static readonly float[] DoorZ = { 5f, 10f, 15f, 20f };
         static readonly float[] LightZ = { 4f, 10f, 16f, 22f };
 
-        static readonly Color CarpetA = new Color(0.36f, 0.06f, 0.07f);
-        static readonly Color CarpetB = new Color(0.30f, 0.05f, 0.06f);
-        static readonly Color CarpetStripe = new Color(0.55f, 0.42f, 0.18f);
-        static readonly Color WallPaper = new Color(0.66f, 0.58f, 0.41f);
-        static readonly Color Wood = new Color(0.28f, 0.16f, 0.09f);
-        static readonly Color Trim = new Color(0.82f, 0.78f, 0.66f);
-        static readonly Color CeilingCol = new Color(0.72f, 0.70f, 0.62f);
-        static readonly Color DoorCol = new Color(0.40f, 0.23f, 0.12f);
-        static readonly Color DoorPanel = new Color(0.33f, 0.19f, 0.10f);
-        static readonly Color Brass = new Color(0.78f, 0.62f, 0.28f);
-        static readonly Color Ink = new Color(0.08f, 0.06f, 0.04f);
-        static readonly Color Black = new Color(0.015f, 0.015f, 0.02f);
-        static readonly Color PanelOn = new Color(1f, 0.94f, 0.78f);
-        static readonly Color LightCol = new Color(1f, 0.87f, 0.66f);
 
         int floor;
         PlayerController pc;
@@ -56,58 +42,6 @@ namespace XIII
             c.BuildShell();
             c.BuildDressing();
             return c;
-        }
-
-        // ---------- helpers ----------
-
-        GameObject Prim(PrimitiveType type, string name, Transform parent, Vector3 pos, Vector3 scale, Material m, bool collider = false, Quaternion? rot = null)
-        {
-            var go = GameObject.CreatePrimitive(type);
-            go.name = name;
-            go.transform.SetParent(parent != null ? parent : transform, false);
-            go.transform.localPosition = pos;
-            go.transform.localRotation = rot ?? Quaternion.identity;
-            go.transform.localScale = scale;
-            var r = go.GetComponent<MeshRenderer>();
-            r.sharedMaterial = m;
-            r.shadowCastingMode = ShadowCastingMode.Off;
-            r.receiveShadows = false;
-            if (!collider) DestroyImmediate(go.GetComponent<Collider>());
-            return go;
-        }
-
-        GameObject Box(string name, Vector3 pos, Vector3 scale, Material m, bool collider = false, Transform parent = null, Quaternion? rot = null)
-        {
-            return Prim(PrimitiveType.Cube, name, parent, pos, scale, m, collider, rot);
-        }
-
-        Transform Empty(string name, Vector3 pos, Quaternion rot, Transform parent = null)
-        {
-            var t = new GameObject(name).transform;
-            t.SetParent(parent != null ? parent : transform, false);
-            t.localPosition = pos;
-            t.localRotation = rot;
-            return t;
-        }
-
-        // Text on a surface. intoSurface points away from the reader (into the wall).
-        TextMesh Label(string text, Vector3 pos, Vector3 intoSurface, float lineHeight, Color color, Transform parent = null)
-        {
-            var go = new GameObject("Text");
-            go.transform.SetParent(parent != null ? parent : transform, false);
-            go.transform.localPosition = pos;
-            go.transform.rotation = Quaternion.LookRotation(intoSurface);
-            var tm = go.AddComponent<TextMesh>();
-            tm.font = Mats.Font;
-            tm.fontSize = 64;
-            // TextMesh world height is roughly fontSize * characterSize / 10.
-            tm.characterSize = lineHeight * 10f / tm.fontSize;
-            tm.anchor = TextAnchor.MiddleCenter;
-            tm.alignment = TextAlignment.Center;
-            tm.color = color;
-            tm.text = text;
-            go.GetComponent<MeshRenderer>().sharedMaterial = Mats.Text;
-            return tm;
         }
 
         // ---------- shell ----------
@@ -152,23 +86,12 @@ namespace XIII
             EndWall(Length, -1, wall, wood, trim);
 
             // Ceiling lights.
-            bool urp = Mats.IsURP;
             foreach (float z in LightZ)
             {
                 Box("LightFrame", new Vector3(0f, 2.99f, z), new Vector3(0.7f, 0.02f, 1.3f), trim);
                 var panel = Box("LightPanel", new Vector3(0f, 2.975f, z), new Vector3(0.6f, 0.02f, 1.2f), Mats.Unlit(PanelOn));
                 panels.Add(panel.GetComponent<Renderer>());
-                var lgo = new GameObject("Light");
-                lgo.transform.SetParent(transform, false);
-                lgo.transform.localPosition = new Vector3(0f, 2.7f, z);
-                var l = lgo.AddComponent<Light>();
-                l.type = LightType.Point;
-                l.range = 9f;
-                l.intensity = urp ? 4.5f : 1.6f;
-                l.color = LightCol;
-                l.shadows = LightShadows.None;
-                l.renderMode = LightRenderMode.ForcePixel;
-                lights.Add(l);
+                lights.Add(PointLight(new Vector3(0f, 2.7f, z), 9f, 1.6f, 4.5f, LightCol));
             }
         }
 
@@ -252,7 +175,7 @@ namespace XIII
             mirrorGlass = Box("MirrorGlass", new Vector3(-1.468f, 1.55f, 12.5f), new Vector3(0.01f, 1.1f, 0.7f), Mats.Lit(new Color(0.45f, 0.5f, 0.52f), 0.95f)).GetComponent<Renderer>();
 
             BuildPortrait(gold);
-            BuildClock(wood);
+            clock = BuildClock(new Vector3(-1.47f, 2.1f, 17.5f), Vector3.right, wood);
 
             // Umbrella stand, right wall.
             Prim(PrimitiveType.Cylinder, "Stand", null, new Vector3(1.28f, 0.3f, 17.5f), new Vector3(0.22f, 0.3f, 0.22f), Mats.Lit(new Color(0.35f, 0.3f, 0.2f), 0.6f));
@@ -262,14 +185,16 @@ namespace XIII
             Prim(PrimitiveType.Cylinder, "Folded", umbrellaInStand.transform, new Vector3(1.28f, 0.78f, 17.5f), new Vector3(0.07f, 0.28f, 0.07f), Mats.Lit(new Color(0.25f, 0.03f, 0.04f)));
             Box("Handle", new Vector3(1.28f, 1.22f, 17.53f), new Vector3(0.03f, 0.03f, 0.1f), Mats.Lit(Wood, 0.5f), false, umbrellaInStand.transform);
 
-            // Horseshoe above the far door, hung the lucky way: opening up.
-            horseshoe = Empty("Horseshoe", new Vector3(0f, 2.68f, Length - 0.02f), Quaternion.identity);
-            Material iron = Mats.Lit(new Color(0.55f, 0.5f, 0.42f), 0.6f);
+            // Brass horseshoe on a dark plaque above the far door, hung the lucky way: opening up.
+            Box("HorseshoePlaque", new Vector3(0f, 2.64f, Length - 0.015f), new Vector3(0.5f, 0.42f, 0.03f), Mats.Lit(new Color(0.12f, 0.07f, 0.04f), 0.4f));
+            Prim(PrimitiveType.Sphere, "Nail", null, new Vector3(0f, 2.62f, Length - 0.04f), Vector3.one * 0.03f, Mats.Lit(new Color(0.3f, 0.3f, 0.3f), 0.7f));
+            horseshoe = Empty("Horseshoe", new Vector3(0f, 2.68f, Length - 0.05f), Quaternion.identity);
+            Material shoe = Mats.Lit(Brass, 0.75f);
             for (int k = 0; k <= 8; k++)
             {
-                float a = Mathf.Lerp(-115f, 115f, k / 8f);
-                float r = 0.14f, rad = a * Mathf.Deg2Rad;
-                Box("Shoe", new Vector3(Mathf.Sin(rad) * r, -Mathf.Cos(rad) * r, 0f), new Vector3(0.07f, 0.04f, 0.02f), iron, false, horseshoe, Quaternion.Euler(0f, 0f, a));
+                float a = Mathf.Lerp(-105f, 105f, k / 8f);
+                float r = 0.16f, rad = a * Mathf.Deg2Rad;
+                Box("Shoe", new Vector3(Mathf.Sin(rad) * r, -Mathf.Cos(rad) * r, 0f), new Vector3(0.085f, 0.05f, 0.03f), shoe, false, horseshoe, Quaternion.Euler(0f, 0f, a));
             }
 
             // Exit sign.
@@ -299,33 +224,6 @@ namespace XIII
             }
         }
 
-        void BuildClock(Material wood)
-        {
-            // Local +Z of the clock points out of the wall, toward the viewer.
-            Transform root = Empty("Clock", new Vector3(-1.47f, 2.1f, 17.5f), Quaternion.LookRotation(Vector3.right));
-            Quaternion faceOut = Quaternion.Euler(90f, 0f, 0f);
-            Prim(PrimitiveType.Cylinder, "Rim", root, Vector3.zero, new Vector3(0.5f, 0.02f, 0.5f), wood, false, faceOut);
-            Prim(PrimitiveType.Cylinder, "Face", root, new Vector3(0f, 0f, 0.02f), new Vector3(0.44f, 0.01f, 0.44f), Mats.Lit(new Color(0.9f, 0.86f, 0.74f)), false, faceOut);
-            Material ink = Mats.Lit(Ink);
-            for (int i = 0; i < 12; i++)
-            {
-                Quaternion r = Quaternion.Euler(0f, 0f, i * 30f);
-                bool major = i % 3 == 0;
-                Box("Mark", r * Vector3.up * 0.18f + new Vector3(0f, 0f, 0.032f), new Vector3(major ? 0.02f : 0.012f, major ? 0.05f : 0.03f, 0.004f), ink, false, root, r);
-            }
-            clock = root.gameObject.AddComponent<ClockHands>();
-            clock.Hour = Hand(root, "Hour", 0.1f, 0.02f, 0.036f, ink);
-            clock.Minute = Hand(root, "Minute", 0.16f, 0.012f, 0.040f, ink);
-            clock.Second = Hand(root, "Second", 0.17f, 0.005f, 0.044f, Mats.Lit(new Color(0.6f, 0.05f, 0.05f)));
-        }
-
-        Transform Hand(Transform root, string name, float length, float width, float z, Material m)
-        {
-            Transform pivot = Empty(name, new Vector3(0f, 0f, z), Quaternion.identity, root);
-            Box(name + "Hand", new Vector3(0f, length * 0.5f - 0.02f, 0f), new Vector3(width, length, 0.004f), m, false, pivot);
-            return pivot;
-        }
-
         // ---------- omens ----------
 
         public void ApplyOmen(int omen)
@@ -336,7 +234,12 @@ namespace XIII
                 case Omens.Ladder: AddLadder(); break;
                 case Omens.Mirror: BreakMirror(); break;
                 case Omens.Umbrella: OpenUmbrella(); break;
-                case Omens.Horseshoe: horseshoe.localRotation = Quaternion.Euler(0f, 0f, 180f); break;
+                case Omens.Horseshoe:
+                    var fall = horseshoe.gameObject.AddComponent<HorseshoeFall>();
+                    fall.Target = pc.transform;
+                    fall.FloorPos = new Vector3(0.2f, 0.02f, 25.0f);
+                    fall.FloorRot = Quaternion.Euler(90f, 25f, 0f);
+                    break;
                 case Omens.Room13: plates[Random.Range(0, plates.Count)].text = "13"; break;
                 case Omens.Clock: clock.Reverse = true; break;
                 case Omens.Portrait: foreach (var e in eyes) e.Follow = true; break;
@@ -472,8 +375,43 @@ namespace XIII
             src.minDistance = 1f;
             src.maxDistance = 11f;
             src.rolloffMode = AudioRolloffMode.Linear;
-            src.volume = 0.8f;
+            var loop = src.gameObject.AddComponent<LoopVolume>();
+            loop.Source = src;
+            loop.BaseVolume = 0.8f;
+            src.volume = 0.8f * Settings.Effects;
             src.Play();
+        }
+
+        // ---------- jump scare ----------
+
+        public void SetLights(bool on)
+        {
+            for (int i = 0; i < lights.Count; i++)
+            {
+                lights[i].enabled = on;
+                panels[i].enabled = on;
+            }
+        }
+
+        // A pale face right in front of the camera. Unlit, so it shows even in the dark.
+        public GameObject SpawnScare(Transform cam)
+        {
+            Vector3 pos = cam.position + cam.forward * 0.65f;
+            pos.x = Mathf.Clamp(pos.x, -1.2f, 1.2f);
+            Transform root = Empty("Scare", pos, Quaternion.LookRotation(cam.position - pos));
+            Material pale = Mats.Unlit(new Color(0.86f, 0.84f, 0.8f));
+            Material hollow = Mats.Unlit(Color.black);
+            Material dark = Mats.Lit(Black);
+            Prim(PrimitiveType.Sphere, "Hair", root, new Vector3(0f, 0.06f, -0.06f), new Vector3(0.38f, 0.52f, 0.3f), dark);
+            Prim(PrimitiveType.Capsule, "Body", root, new Vector3(0f, -1.05f, -0.12f), new Vector3(0.55f, 0.8f, 0.35f), dark);
+            Prim(PrimitiveType.Sphere, "Face", root, Vector3.zero, new Vector3(0.3f, 0.42f, 0.28f), pale);
+            foreach (float x in new[] { -0.07f, 0.07f })
+            {
+                Prim(PrimitiveType.Sphere, "Socket", root, new Vector3(x, 0.05f, 0.12f), new Vector3(0.085f, 0.11f, 0.05f), hollow);
+                Prim(PrimitiveType.Sphere, "Glint", root, new Vector3(x, 0.05f, 0.145f), Vector3.one * 0.014f, Mats.Unlit(Color.white));
+            }
+            Prim(PrimitiveType.Sphere, "Mouth", root, new Vector3(0f, -0.12f, 0.11f), new Vector3(0.1f, 0.17f, 0.05f), hollow);
+            return root.gameObject;
         }
     }
 }

@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 namespace XIII
@@ -10,10 +9,9 @@ namespace XIII
 
         public Camera Cam;
         public bool InputEnabled;
-        public float Sensitivity = 0.1f; // degrees per pixel
         public float WalkSpeed = 2.3f;
         public float RunSpeed = 3.8f;
-        public event Action OnStep;
+        public float Shake; // 0..1, decays on its own
 
         CharacterController cc;
         AudioSource stepSource;
@@ -41,7 +39,7 @@ namespace XIII
             stepSource = gameObject.AddComponent<AudioSource>();
             stepSource.playOnAwake = false;
             stepSource.spatialBlend = 0f;
-            stepSource.volume = 0.35f;
+            stepSource.volume = 0.2f; // quiet: it plays constantly
         }
 
         public void Teleport(Vector3 position, float yawDegrees)
@@ -61,8 +59,8 @@ namespace XIII
             float dt = Time.deltaTime;
 
             Vector2 look = InputEnabled ? XInput.LookDelta() : Vector2.zero;
-            yaw += look.x * Sensitivity;
-            pitch = Mathf.Clamp(pitch - look.y * Sensitivity, -80f, 80f);
+            yaw += look.x * Settings.Sensitivity;
+            pitch = Mathf.Clamp(pitch - look.y * Settings.Sensitivity, -80f, 80f);
             transform.rotation = Quaternion.Euler(0f, yaw, 0f);
             Cam.transform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
 
@@ -79,14 +77,13 @@ namespace XIII
             delta.y = 0f;
             float moved = delta.magnitude;
 
-            float stride = running ? 0.95f : 0.72f;
+            float stride = running ? 1.0f : 0.8f;
             stepAcc += moved;
             if (stepAcc >= stride)
             {
                 stepAcc = 0f;
-                stepSource.pitch = UnityEngine.Random.Range(0.85f, 1.1f);
-                stepSource.PlayOneShot(Sfx.Step);
-                if (OnStep != null) OnStep();
+                stepSource.pitch = Random.Range(0.92f, 1.05f);
+                stepSource.PlayOneShot(Sfx.Step, Settings.Footsteps);
             }
 
             // head bob
@@ -94,7 +91,9 @@ namespace XIII
             bobAmount = Mathf.MoveTowards(bobAmount, walking ? 1f : 0f, dt * 4f);
             if (walking) bobPhase += moved / stride * Mathf.PI;
             float bob = -Mathf.Abs(Mathf.Sin(bobPhase)) * 0.045f * bobAmount;
-            Cam.transform.localPosition = new Vector3(0f, EyeHeight + bob, 0f);
+            Vector3 shake = Shake > 0f ? Random.insideUnitSphere * Shake * 0.06f : Vector3.zero;
+            Shake = Mathf.MoveTowards(Shake, 0f, dt * 1.5f);
+            Cam.transform.localPosition = new Vector3(0f, EyeHeight + bob, 0f) + shake;
         }
     }
 }
