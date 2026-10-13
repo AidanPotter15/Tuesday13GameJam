@@ -96,7 +96,7 @@ namespace XIII
             {
                 tickTimer = Reverse ? 0.25f : 1f;
                 src.pitch = Reverse ? 0.7f : 1f;
-                src.PlayOneShot(Sfx.Tick);
+                src.PlayOneShot(Sfx.Tick, Settings.Effects);
             }
         }
     }
@@ -174,7 +174,7 @@ namespace XIII
             t = Mathf.Min(1f, t + Time.deltaTime / 0.5f);
             transform.localPosition = Vector3.Lerp(startPos, FloorPos, t * t); // accelerates like a real drop
             transform.localRotation = Quaternion.Slerp(startRot, FloorRot, t);
-            if (t >= 1f) src.PlayOneShot(Sfx.Clink);
+            if (t >= 1f) src.PlayOneShot(Sfx.Clink, Settings.Effects);
         }
     }
 
@@ -221,8 +221,17 @@ namespace XIII
                 nextStep = Time.time + 0.64f + Random.Range(-0.03f, 0.03f);
                 src.transform.position = p.position - p.forward * distance + Vector3.up * 0.1f;
                 src.pitch = Random.Range(0.93f, 1.0f);
-                src.PlayOneShot(Sfx.Heel);
+                src.PlayOneShot(Sfx.Heel, Settings.Effects);
             }
         }
+    }
+
+    // Keeps a looping sound in step with the Effects volume slider.
+    public class LoopVolume : MonoBehaviour
+    {
+        public AudioSource Source;
+        public float BaseVolume = 1f;
+
+        void Update() { Source.volume = BaseVolume * Settings.Effects; }
     }
 }

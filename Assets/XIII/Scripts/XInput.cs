@@ -31,6 +31,17 @@ namespace XIII
 #endif
         }
 
+        // Esc or P. In a browser, Esc is also caught by the page to release the mouse.
+        public static bool PausePressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var k = Keyboard.current;
+            return k != null && (k.escapeKey.wasPressedThisFrame || k.pKey.wasPressedThisFrame);
+#else
+            return Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P);
+#endif
+        }
+
         // Mouse movement this frame, in pixels.
         public static Vector2 LookDelta()
         {

@@ -30,6 +30,10 @@ There are exactly **13 omens**, and each one is a bad-luck superstition or a lim
 
 On Floor XIII you see all 13 at once, and the door behind you won't open.
 
+**Controls:** WASD or arrow keys to walk, mouse to look, Shift to hurry, **Esc or P to pause**.
+The pause menu has Resume, Exit to menu, volume sliders (master, ambience, footsteps, effects), mouse sensitivity, and the omen journal.
+Settings and the journal are saved between sessions, including in the browser build.
+
 Everything is generated from code: geometry is built from Unity primitives and every sound is synthesised at startup.
 There are no art or audio assets to import.
 
@@ -77,7 +81,8 @@ These credits also appear on the in-game title and end screens. Edit `XIIIGame.A
 
 | File | What it does |
 |------|--------------|
-| `Scripts/XIIIGame.cs` | Game loop, floor counter, omen choice, transitions, all UI (IMGUI) |
+| `Scripts/XIIIGame.cs` | Game loop, floor counter, omen choice, transitions, title, pause and end screens (IMGUI) |
+| `Scripts/Settings.cs` | Volume, mouse sensitivity and the omen journal, saved between sessions |
 | `Scripts/Corridor.cs` | Builds the corridor and applies each omen |
 | `Scripts/OmenBehaviours.cs` | Cat, eyes, clock, flicker, vanishing guest, falling horseshoe, footsteps |
 | `Scripts/PlayerController.cs` | First-person movement, head bob, footsteps |

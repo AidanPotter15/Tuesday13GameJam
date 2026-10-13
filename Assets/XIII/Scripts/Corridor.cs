@@ -479,7 +479,10 @@ namespace XIII
             src.minDistance = 1f;
             src.maxDistance = 11f;
             src.rolloffMode = AudioRolloffMode.Linear;
-            src.volume = 0.8f;
+            var loop = src.gameObject.AddComponent<LoopVolume>();
+            loop.Source = src;
+            loop.BaseVolume = 0.8f;
+            src.volume = 0.8f * Settings.Effects;
             src.Play();
         }
     }

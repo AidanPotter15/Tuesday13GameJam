@@ -9,7 +9,6 @@ namespace XIII
 
         public Camera Cam;
         public bool InputEnabled;
-        public float Sensitivity = 0.1f; // degrees per pixel
         public float WalkSpeed = 2.3f;
         public float RunSpeed = 3.8f;
 
@@ -59,8 +58,8 @@ namespace XIII
             float dt = Time.deltaTime;
 
             Vector2 look = InputEnabled ? XInput.LookDelta() : Vector2.zero;
-            yaw += look.x * Sensitivity;
-            pitch = Mathf.Clamp(pitch - look.y * Sensitivity, -80f, 80f);
+            yaw += look.x * Settings.Sensitivity;
+            pitch = Mathf.Clamp(pitch - look.y * Settings.Sensitivity, -80f, 80f);
             transform.rotation = Quaternion.Euler(0f, yaw, 0f);
             Cam.transform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
 
@@ -83,7 +82,7 @@ namespace XIII
             {
                 stepAcc = 0f;
                 stepSource.pitch = Random.Range(0.92f, 1.05f);
-                stepSource.PlayOneShot(Sfx.Step);
+                stepSource.PlayOneShot(Sfx.Step, Settings.Footsteps);
             }
 
             // head bob
