@@ -42,6 +42,18 @@ namespace XIII
 #endif
         }
 
+        // E or left click.
+        public static bool InteractPressed()
+        {
+#if ENABLE_INPUT_SYSTEM
+            var k = Keyboard.current;
+            var m = Mouse.current;
+            return (k != null && k.eKey.wasPressedThisFrame) || (m != null && m.leftButton.wasPressedThisFrame);
+#else
+            return Input.GetKeyDown(KeyCode.E) || Input.GetMouseButtonDown(0);
+#endif
+        }
+
         // Mouse movement this frame, in pixels.
         public static Vector2 LookDelta()
         {

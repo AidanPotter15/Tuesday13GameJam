@@ -13,18 +13,24 @@ namespace XIII
         [Header("Debug (editor testing)")]
         [Tooltip("Force every corridor (after the first) to contain this omen. -1 = off.")]
         public int DebugOmen = -1;
-        [Tooltip("Floor to start on. Set to 12 to test the ending quickly.")]
+        [Tooltip("Floor to start on. Set to 12 to test the ending quickly. Anything above 1 skips the lobby.")]
         public int DebugStartFloor = 1;
+        [Tooltip("Start each run in the corridor instead of the lobby.")]
+        public bool DebugSkipLobby;
+        [Tooltip("Floor where the jump scare happens. 0 = random floor from IV to IX, once per run.")]
+        public int DebugScareFloor;
 
         enum State { Title, Playing, Transition, Ended }
 
         State state = State.Title;
         PlayerController player;
         Corridor corridor;
+        Lobby lobby;
         AudioSource hum, sfx, ui;
 
         int floor = 1, omen = -1, lastOmen = -1, mistakes;
-        bool firstCorridor = true, paused;
+        bool firstCorridor = true, paused, inLobby, nearBell, scareArmed, scareDone;
+        int scareFloor, bellRings;
         float runTime;
 
         float fade, redFlash, grace, thudCooldown, nextPreview;
@@ -41,6 +47,7 @@ namespace XIII
         static readonly Color Dim = new Color(0.55f, 0.52f, 0.46f);
 
         const float HumVolume = 0.22f;
+        static readonly Color Ambient = new Color(0.16f, 0.145f, 0.11f);
         bool Finale { get { return floor >= 13; } }
 
         void Awake()
@@ -49,7 +56,7 @@ namespace XIII
             Sfx.Init();
             RenderSettings.skybox = null;
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.16f, 0.145f, 0.11f);
+            RenderSettings.ambientLight = Ambient;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Exponential;
             RenderSettings.fogColor = new Color(0.04f, 0.033f, 0.024f);
@@ -80,14 +87,56 @@ namespace XIII
             runTime = 0f;
             firstCorridor = true;
             lastOmen = -1;
-            BuildCorridor();
-            player.Teleport(Corridor.Spawn, 0f);
+            bellRings = 0;
+            scareDone = false;
+            scareFloor = DebugScareFloor > 0 ? DebugScareFloor : Random.Range(4, 10);
+            RestoreAtmosphere();
+            if (DebugSkipLobby || floor > 1)
+            {
+                BuildCorridor();
+                player.Teleport(Corridor.Spawn, 0f);
+            }
+            else
+            {
+                BuildLobby();
+                player.Teleport(Lobby.Spawn, 0f);
+            }
+        }
+
+        void ClearArea()
+        {
+            if (corridor != null) Destroy(corridor.gameObject);
+            if (lobby != null) Destroy(lobby.gameObject);
+            corridor = null;
+            lobby = null;
+            nearBell = false;
+            scareArmed = false;
+        }
+
+        // Undo anything the jump scare changed, in case it was cut short.
+        void RestoreAtmosphere()
+        {
+            RenderSettings.ambientLight = Ambient;
+            if (!hum.isPlaying) hum.Play();
+        }
+
+        void BuildLobby()
+        {
+            ClearArea();
+            lobby = Lobby.Build();
+            inLobby = true;
+            omen = -1;
+            RenderSettings.fogDensity = 0.02f;
+            hum.pitch = 1f;
         }
 
         void BuildCorridor()
         {
-            if (corridor != null) Destroy(corridor.gameObject);
+            ClearArea();
+            inLobby = false;
             corridor = Corridor.Build(floor, player);
+            // The scare floor always hides a real omen too, so turning back is still the right call.
+            scareArmed = !scareDone && !Finale && floor == scareFloor;
             if (Finale)
             {
                 omen = -1;
@@ -95,7 +144,7 @@ namespace XIII
             }
             else
             {
-                omen = PickOmen();
+                omen = PickOmen(scareArmed);
                 if (omen >= 0) corridor.ApplyOmen(omen);
             }
             firstCorridor = false;
@@ -103,11 +152,14 @@ namespace XIII
             hum.pitch = Mathf.Lerp(1f, 0.75f, (floor - 1) / 12f);
         }
 
-        int PickOmen()
+        int PickOmen(bool force)
         {
-            if (firstCorridor) return -1; // the first corridor is always safe, so you can learn it
-            if (DebugOmen >= 0 && DebugOmen < Omens.Count) return DebugOmen;
-            if (Random.value < 0.4f) return -1;
+            if (DebugOmen >= 0 && DebugOmen < Omens.Count && (force || !firstCorridor)) return DebugOmen;
+            if (!force)
+            {
+                if (firstCorridor) return -1; // the first corridor is always safe, so you can learn it
+                if (Random.value < 0.4f) return -1;
+            }
 
             // Prefer omens the player hasn't met yet.
             var pool = new List<int>();
@@ -158,9 +210,28 @@ namespace XIII
             grace -= dt;
             thudCooldown -= dt;
 
-            if (state == State.Playing && !paused && grace <= 0f)
+            nearBell = false;
+            if (state == State.Playing && !paused && grace <= 0f && inLobby)
+            {
+                Vector3 p = player.transform.position;
+                if (p.z > Lobby.ExitZ && Mathf.Abs(p.x) < 1.1f)
+                {
+                    StartCoroutine(TakeLift());
+                }
+                else if (p.z < Lobby.EntranceZ && thudCooldown <= 0f)
+                {
+                    Play(Sfx.Thud, 1f);
+                    Show("", "The doors are locked.", Red, 2.5f);
+                    thudCooldown = 2.5f;
+                }
+                Vector2 toBell = new Vector2(Lobby.Bell.x - p.x, Lobby.Bell.z - p.z);
+                nearBell = toBell.magnitude < 1.8f;
+                if (nearBell && player.InputEnabled && XInput.InteractPressed()) RingBell();
+            }
+            else if (state == State.Playing && !paused && grace <= 0f)
             {
                 float z = player.transform.position.z;
+                if (scareArmed && z > 11f) StartCoroutine(JumpScare());
                 if (z > Corridor.ForwardTrigger)
                 {
                     StartCoroutine(Go(true));
@@ -230,6 +301,59 @@ namespace XIII
             state = State.Playing;
         }
 
+        void RingBell()
+        {
+            Play(Sfx.Bell, 0.7f);
+            bellRings++;
+            if (bellRings == 3) Show("", "No one is coming.", Paper, 3f);
+            else if (bellRings == 7) Show("", "Stop.", Red, 2.5f);
+        }
+
+        IEnumerator TakeLift()
+        {
+            state = State.Transition;
+            Play(Sfx.Ding, 0.8f);
+            yield return FadeTo(1f, 0.6f);
+            yield return new WaitForSeconds(0.6f);
+            BuildCorridor();
+            player.Teleport(Corridor.Spawn, 0f);
+            grace = 0.5f;
+            Show("FLOOR " + Omens.Roman(floor), "If you see an omen, turn back.", Color.white, 4f);
+            yield return FadeTo(0f, 0.6f);
+            state = State.Playing;
+        }
+
+        // Once per run: the power dies, and when the lights come back something is right in front of you.
+        IEnumerator JumpScare()
+        {
+            scareArmed = false;
+            scareDone = true;
+            Corridor c = corridor;
+
+            c.SetLights(false);
+            RenderSettings.ambientLight = Ambient * 0.06f;
+            hum.Stop();
+            Play(Sfx.PowerDown, 1f);
+            yield return new WaitForSeconds(1.6f);
+            if (c == null) { RestoreAtmosphere(); yield break; } // walked through a door in the dark
+
+            GameObject face = c.SpawnScare(player.Cam.transform);
+            c.SetLights(true);
+            RenderSettings.ambientLight = Ambient;
+            Play(Sfx.Scream, 1f);
+            redFlash = 0.7f;
+            player.Shake = 1f;
+            yield return new WaitForSeconds(0.6f);
+            if (c == null) { RestoreAtmosphere(); yield break; }
+
+            c.SetLights(false);
+            RenderSettings.ambientLight = Ambient * 0.06f;
+            Destroy(face);
+            yield return new WaitForSeconds(0.5f);
+            if (c != null) c.SetLights(true);
+            RestoreAtmosphere();
+        }
+
         IEnumerator FadeTo(float target, float time)
         {
             float start = fade;
@@ -253,7 +377,8 @@ namespace XIII
         {
             state = State.Playing;
             Lock();
-            Show("FLOOR " + Omens.Roman(floor), "Your room is on the thirteenth floor.", Color.white, 4f);
+            if (inLobby) Show("HOTEL TREDECIM", "Your room is on the thirteenth floor. Take the lift.", Brass, 4.5f);
+            else Show("FLOOR " + Omens.Roman(floor), "Your room is on the thirteenth floor.", Color.white, 4f);
         }
 
         void Lock()
@@ -315,6 +440,12 @@ namespace XIII
                 mid.normal.textColor = new Color(0.9f, 0.88f, 0.82f, a);
                 GUI.Label(new Rect(0f, H * 0.33f, W, 110f * u), msgTitle, big);
                 GUI.Label(new Rect(W * 0.15f, H * 0.33f + 110f * u, W * 0.7f, 60f * u), msgSub, mid);
+            }
+
+            if (nearBell && state == State.Playing && !paused)
+            {
+                small.normal.textColor = Paper;
+                GUI.Label(new Rect(0f, H * 0.62f, W, 30f * u), "[E] Ring the bell", small);
             }
 
             if (state == State.Title) DrawTitle(u);
@@ -403,7 +534,7 @@ namespace XIII
             int mins = (int)(runTime / 60f), secs = (int)(runTime % 60f);
             mid.normal.textColor = Dim;
             GUI.Label(new Rect(0f, y, W, 40f * u),
-                "Floor " + Omens.Roman(Mathf.Min(floor, 13)) + "    ·    Wrong turns " + mistakes + "    ·    " + mins + ":" + secs.ToString("00"), mid);
+                (inLobby ? "Lobby" : "Floor " + Omens.Roman(Mathf.Min(floor, 13))) + "    ·    Wrong turns " + mistakes + "    ·    " + mins + ":" + secs.ToString("00"), mid);
             y += 80f * u;
 
             float lx, rx, cw;

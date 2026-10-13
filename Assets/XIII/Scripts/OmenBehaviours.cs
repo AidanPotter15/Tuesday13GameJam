@@ -234,4 +234,15 @@ namespace XIII
 
         void Update() { Source.volume = BaseVolume * Settings.Effects; }
     }
+
+    // Grandfather-clock pendulum.
+    public class Swing : MonoBehaviour
+    {
+        public float Angle = 10f, Speed = 2.6f;
+        Quaternion rest;
+
+        void Start() { rest = transform.localRotation; }
+
+        void Update() { transform.localRotation = rest * Quaternion.Euler(0f, 0f, Mathf.Sin(Time.time * Speed) * Angle); }
+    }
 }

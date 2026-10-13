@@ -11,6 +11,7 @@ namespace XIII
         public bool InputEnabled;
         public float WalkSpeed = 2.3f;
         public float RunSpeed = 3.8f;
+        public float Shake; // 0..1, decays on its own
 
         CharacterController cc;
         AudioSource stepSource;
@@ -90,7 +91,9 @@ namespace XIII
             bobAmount = Mathf.MoveTowards(bobAmount, walking ? 1f : 0f, dt * 4f);
             if (walking) bobPhase += moved / stride * Mathf.PI;
             float bob = -Mathf.Abs(Mathf.Sin(bobPhase)) * 0.045f * bobAmount;
-            Cam.transform.localPosition = new Vector3(0f, EyeHeight + bob, 0f);
+            Vector3 shake = Shake > 0f ? Random.insideUnitSphere * Shake * 0.06f : Vector3.zero;
+            Shake = Mathf.MoveTowards(Shake, 0f, dt * 1.5f);
+            Cam.transform.localPosition = new Vector3(0f, EyeHeight + bob, 0f) + shake;
         }
     }
 }
