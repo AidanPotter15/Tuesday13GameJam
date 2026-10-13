@@ -267,23 +267,14 @@ namespace XIII
 
         void AddCat()
         {
-            Material fur = Mats.Lit(Black, 0.4f);
             Transform cat = Empty("BlackCat", new Vector3(-1.2f, 0f, 11.5f), Quaternion.LookRotation(Vector3.right));
-            Prim(PrimitiveType.Sphere, "Body", cat, new Vector3(0f, 0.2f, -0.04f), new Vector3(0.24f, 0.26f, 0.44f), fur);
-            Prim(PrimitiveType.Sphere, "Chest", cat, new Vector3(0f, 0.28f, 0.12f), new Vector3(0.2f, 0.28f, 0.2f), fur);
-            Prim(PrimitiveType.Sphere, "Head", cat, new Vector3(0f, 0.45f, 0.2f), new Vector3(0.19f, 0.17f, 0.17f), fur);
-            Box("Ear", new Vector3(-0.055f, 0.55f, 0.2f), new Vector3(0.05f, 0.08f, 0.03f), fur, false, cat, Quaternion.Euler(0f, 0f, 20f));
-            Box("Ear", new Vector3(0.055f, 0.55f, 0.2f), new Vector3(0.05f, 0.08f, 0.03f), fur, false, cat, Quaternion.Euler(0f, 0f, -20f));
-            Material glow = Mats.Unlit(new Color(0.85f, 1f, 0.25f));
-            Prim(PrimitiveType.Sphere, "Eye", cat, new Vector3(-0.045f, 0.47f, 0.285f), new Vector3(0.04f, 0.03f, 0.02f), glow);
-            Prim(PrimitiveType.Sphere, "Eye", cat, new Vector3(0.045f, 0.47f, 0.285f), new Vector3(0.04f, 0.03f, 0.02f), glow);
-            Prim(PrimitiveType.Capsule, "Tail", cat, new Vector3(0f, 0.3f, -0.32f), new Vector3(0.04f, 0.2f, 0.04f), fur, false, Quaternion.Euler(-35f, 0f, 0f));
-            for (int i = 0; i < 4; i++)
-                Box("Leg", new Vector3(i < 2 ? -0.06f : 0.06f, 0.06f, i % 2 == 0 ? 0.12f : -0.15f), new Vector3(0.04f, 0.12f, 0.04f), fur, false, cat);
+            cat.localScale = Vector3.one * 1.2f;
             var walker = cat.gameObject.AddComponent<CatWalker>();
+            walker.Rig = Creatures.Build(CreatureData.Cat, cat, Creatures.CatMaterials());
             walker.Target = pc.transform;
+            walker.LookAt = cam;
             walker.From = new Vector3(-1.2f, 0f, 11.5f);
-            walker.To = new Vector3(0.9f, 0f, 11.5f);
+            walker.To = new Vector3(0.75f, 0f, 11.9f);
         }
 
         void AddLadder()
@@ -349,16 +340,12 @@ namespace XIII
 
         void AddGuest()
         {
-            Material dark = Mats.Lit(new Color(0.01f, 0.01f, 0.012f), 0.1f);
-            Transform g = Empty("Guest", new Vector3(0f, 0f, 24.3f), Quaternion.identity);
-            Prim(PrimitiveType.Capsule, "Body", g, new Vector3(0f, 1.05f, 0f), new Vector3(0.55f, 1.05f, 0.35f), dark);
-            Prim(PrimitiveType.Sphere, "Head", g, new Vector3(0f, 2.12f, 0f), new Vector3(0.28f, 0.34f, 0.28f), dark);
-            Material eye = Mats.Unlit(new Color(0.95f, 0.95f, 0.9f));
-            Prim(PrimitiveType.Sphere, "Eye", g, new Vector3(-0.06f, 2.16f, 0.13f), Vector3.one * 0.03f, eye);
-            Prim(PrimitiveType.Sphere, "Eye", g, new Vector3(0.06f, 2.16f, 0.13f), Vector3.one * 0.03f, eye);
-            var v = g.gameObject.AddComponent<FigureVanish>();
-            v.Target = pc.transform;
-            v.Distance = 8f;
+            Transform g = Empty("Guest", new Vector3(0f, 0f, 24.3f), Quaternion.LookRotation(Vector3.back));
+            var phantom = g.gameObject.AddComponent<GuestPhantom>();
+            phantom.Rig = Creatures.Build(CreatureData.Guest, g, Creatures.GuestMaterials());
+            phantom.Target = pc.transform;
+            phantom.Lamp = lights[3]; // the light just in front of him
+            phantom.Distance = 9f;
         }
 
         void OpenDoor(int index)
@@ -393,25 +380,44 @@ namespace XIII
             }
         }
 
-        // A pale face right in front of the camera. Unlit, so it shows even in the dark.
-        public GameObject SpawnScare(Transform cam)
+        // The other guest, right in front of your face, reaching for you.
+        public GameObject SpawnScare(Transform view)
         {
-            Vector3 pos = cam.position + cam.forward * 0.65f;
-            pos.x = Mathf.Clamp(pos.x, -1.2f, 1.2f);
-            Transform root = Empty("Scare", pos, Quaternion.LookRotation(cam.position - pos));
-            Material pale = Mats.Unlit(new Color(0.86f, 0.84f, 0.8f));
-            Material hollow = Mats.Unlit(Color.black);
-            Material dark = Mats.Lit(Black);
-            Prim(PrimitiveType.Sphere, "Hair", root, new Vector3(0f, 0.06f, -0.06f), new Vector3(0.38f, 0.52f, 0.3f), dark);
-            Prim(PrimitiveType.Capsule, "Body", root, new Vector3(0f, -1.05f, -0.12f), new Vector3(0.55f, 0.8f, 0.35f), dark);
-            Prim(PrimitiveType.Sphere, "Face", root, Vector3.zero, new Vector3(0.3f, 0.42f, 0.28f), pale);
-            foreach (float x in new[] { -0.07f, 0.07f })
-            {
-                Prim(PrimitiveType.Sphere, "Socket", root, new Vector3(x, 0.05f, 0.12f), new Vector3(0.085f, 0.11f, 0.05f), hollow);
-                Prim(PrimitiveType.Sphere, "Glint", root, new Vector3(x, 0.05f, 0.145f), Vector3.one * 0.014f, Mats.Unlit(Color.white));
-            }
-            Prim(PrimitiveType.Sphere, "Mouth", root, new Vector3(0f, -0.12f, 0.11f), new Vector3(0.1f, 0.17f, 0.05f), hollow);
+            Vector3 target = view.position + view.forward * 0.42f; // where his face goes
+            Vector3 back = view.position - target;
+            back.y = 0f;
+            Quaternion facing = Quaternion.LookRotation(back.sqrMagnitude > 0.0001f ? back : Vector3.back);
+
+            Transform root = Empty("Scare", Vector3.zero, facing);
+            var rig = Creatures.Build(CreatureData.Guest, root, Creatures.GuestMaterials());
+            Transform head = rig["Head"];
+            head.localRotation = Quaternion.Euler(10f, 0f, 14f);
+
+            // Slide the whole figure so the tilted head lands on the target. His feet end up under the floor.
+            Vector3 headCentre = head.TransformPoint(new Vector3(0f, 0.315f, 0.025f));
+            root.position += target - headCentre;
+            Vector3 h = root.InverseTransformPoint(target);
+            Reach(rig, "L", -1f, h);
+            Reach(rig, "R", 1f, h);
+            head.gameObject.AddComponent<Twitch>().Amount = 5f;
+
+            // A cold light between his face and yours, so it reads even between ceiling lights.
+            Light l = PointLight(target + facing * Vector3.forward * 0.25f + Vector3.down * 0.1f, 1.4f, 1.4f, 2.5f, new Color(0.75f, 0.85f, 1f));
+            l.transform.SetParent(root, true);
             return root.gameObject;
+        }
+
+        // Points the upper arm at an elbow target out to the side, and the forearm at a wrist target
+        // in the bottom corner of the player's view. `head` is the face position in the figure's space.
+        static void Reach(Dictionary<string, Transform> rig, string side, float s, Vector3 head)
+        {
+            Transform upper = rig["Arm" + side], fore = rig["Arm" + side + "2"], hand = rig["Hand" + side];
+            Vector3 shoulder = upper.localPosition;
+            Vector3 elbowTarget = head + new Vector3(s * 0.56f, -0.62f, 0.21f);
+            Vector3 wristTarget = head + new Vector3(s * 0.27f, -0.2f, 0.2f);
+            upper.localRotation = Quaternion.FromToRotation(fore.localPosition, elbowTarget - shoulder);
+            Vector3 elbow = shoulder + upper.localRotation * fore.localPosition;
+            fore.localRotation = Quaternion.FromToRotation(hand.localPosition, Quaternion.Inverse(upper.localRotation) * (wristTarget - elbow));
         }
     }
 }

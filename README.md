@@ -14,7 +14,7 @@ There are exactly **13 omens**, and each one is a bad-luck superstition or a lim
 
 | # | Omen | What changes |
 |---|------|--------------|
-| 1 | The black cat | A black cat crosses your path, then watches you |
+| 1 | The black cat | A black cat walks across your path, then turns to stare at you |
 | 2 | The ladder | A ladder leans across the hall |
 | 3 | The broken mirror | The mirror is cracked and there are shards on the carpet |
 | 4 | The open umbrella | The umbrella is out of its stand and open indoors |
@@ -23,7 +23,7 @@ There are exactly **13 omens**, and each one is a bad-luck superstition or a lim
 | 7 | The backward clock | The clock runs backward and ticks too fast |
 | 8 | The watching portrait | The portrait's eyes follow you |
 | 9 | The red light | One ceiling light is red and flickering |
-| 10 | The other guest | A tall figure stands at the end of the hall and is gone when you get close |
+| 10 | The other guest | A too-tall bellhop stands at the end of the hall, head cocked. Get close and he flickers out with the light |
 | 11 | The footsteps | Hard heels walk behind you, out of step with you, and take two more steps after you stop |
 | 12 | The open door | A room door hangs open, with whispering inside |
 | 13 | The thirteenth sign | The EXIT sign reads **XIII** |
@@ -38,7 +38,7 @@ Once per run, on a random floor between IV and IX, the power fails halfway down 
 The pause menu has Resume, Exit to menu, volume sliders (master, ambience, footsteps, effects), mouse sensitivity, and the omen journal.
 Settings and the journal are saved between sessions, including in the browser build.
 
-Everything is generated from code: geometry is built from Unity primitives and every sound is synthesised at startup.
+Everything is generated from code: the hotel is built from Unity primitives, the cat and the guest are procedural meshes baked by `tools/creatures.py`, and every sound is synthesised at startup.
 There are no art or audio assets to import.
 
 ---
@@ -92,7 +92,10 @@ These credits also appear on the in-game title and end screens. Edit `XIIIGame.A
 | `Scripts/Corridor.cs` | Builds the corridor, applies each omen, and stages the jump scare |
 | `Scripts/Lobby.cs` | Builds the Hotel Tredecim lobby |
 | `Scripts/HotelBuilder.cs` | Shared palette and primitive helpers for the lobby and corridor |
-| `Scripts/OmenBehaviours.cs` | Cat, eyes, clock, flicker, vanishing guest, falling horseshoe, footsteps |
+| `Scripts/OmenBehaviours.cs` | Cat walk cycle, portrait eyes, clock, flicker, the guest, falling horseshoe, footsteps |
+| `Scripts/Creatures.cs` | Builds the cat and the guest from their baked meshes as jointed rigs |
+| `Scripts/CreatureData.cs` | Generated mesh data for the cat and the guest. Don't edit by hand |
+| `tools/creatures.py` | Generates `CreatureData.cs`. Run `python3 tools/creatures.py previews/` to regenerate and render previews (needs numpy and Pillow) |
 | `Scripts/PlayerController.cs` | First-person movement, head bob, footsteps |
 | `Scripts/Sfx.cs` | Procedural audio (hum, steps, heels, clink, door, stinger, bell, whisper, tick, thud) |
 | `Scripts/Mats.cs` | Material factory (URP or Built-in) |
